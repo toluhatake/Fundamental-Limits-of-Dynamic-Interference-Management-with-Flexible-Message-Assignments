@@ -1,0 +1,151 @@
+function [DoF] = compute_DoF_if(shift,K, msg, H_21,H_KK)
+%% Defining the logic for the binary variables 
+
+% In this function we define the logic of the binary variables of the
+% Algorithm. Since receiver 0 is inactive, the indices "i" and "j" of b_i,j
+% are mapped to "i+1" and "j+1". Hence we define a binary (K+1)x(K+1) matrix
+% tm where tm(i,j)=1 indicates that message W_i-1 is sent from receiver
+% j-1. Furthermore we pass the variables "shift" ,"K", "msg", "H_21" and
+% "H_KK". shift indicates the first transmitter, that belongs to the
+% identified subnetwork and hence only messages W_i with i >= shift are
+% considered for transmission. K indicates the size of the subnetwork.
+% H_21=0, if the first existing link of the subnetwork is direct and H_21=1
+% if the first existing link of the subnetwork is diagonal. For every call
+% of this function we pass the massage assignment "msg" that we are
+% analyzing. All links of the subnetwork exist, while the last direct link
+% and the first diagonal link can be erased.
+
+tm = zeros(K+1,K+1); %initializing matrix tm
+if K==1 
+if not(H_21==0)&& any(msg(shift,:)==shift-1) %If masssage W_1 is available at transmitter 0, the firstlink of the subnetwork has to be diagonal i.e. H_21=0 to sen message W_1 from transmitter 0.
+    tm(2,1)=1;
+else
+    if not(H_KK==0) %If the subnetwork is of size 1, we have to consider if H(2,2)=1 to transmit W_1 from transmitter 1
+        tm(2,2)=1;
+    end
+end
+end
+if K>1
+if not(H_21==0)&& any(msg(shift,:)==shift-1)
+    tm(2,1)=1;
+else % Since K>1, H(2,2)=1
+    tm(2,2)=1;
+end
+end
+if K>1
+if K==2
+if any(msg(shift+1,:)==shift)&&tm(2,2)==0
+    if any(msg(shift+1,:)==shift-1)
+        tm(3,2)=1;
+        tm(3,1)=1;
+    end
+end
+if (not(H_KK==0)&&any(msg(shift+1,:)==shift-1) && not(H_21==0)&&any(msg(shift,:)==shift+1)) %Since K=2, it has to be H_KK=1 to send W_2 from transmitter 2  
+    tm(3,2)=1;
+    tm(3,1)=1;
+    tm(2,3)=1;
+    tm(2,2)=1;
+end
+if (not(H_KK==0)&&any(msg(shift,:)==shift)) 
+   if tm(2,2)==0
+      tm(3,3)=1;
+   end
+   if any(msg(shift,:)==shift+1)
+      tm(3,3)=1;
+      tm(2,3)=1;
+   end
+end
+end
+if K>2
+if any(msg(shift+1,:)==shift)&&tm(2,2)==0
+    if any(msg(shift+1,:)==shift-1)
+        tm(3,2)=1;
+        tm(3,1)=1;
+    end
+end
+if any(msg(shift+1,:)==shift-1) && not(H_21==0)&&any(msg(shift,:)==shift+1) %Since K=2, H_KK=1
+    tm(3,2)=1;
+    tm(3,1)=1;
+    tm(2,3)=1;
+    tm(2,2)=1;
+end
+if any(msg(shift,:)==shift)
+   if tm(2,2)==0
+      tm(3,3)=1;
+   end
+   if any(msg(shift,:)==shift+1)
+      tm(3,3)=1;
+      tm(2,3)=1;
+   end
+end
+end
+end
+
+if K>2
+for i=(shift+2):(K+shift-1)%% Here we consider all users from transmitter 3 to transmitter K
+    if i==K+shift-1 
+    if any(msg(i,:)==i-1)&&tm(i-1+2-shift,i-1+2-shift)==0
+        if tm(i-1+2-shift,i-2+2-shift)==0
+            tm(i+2-shift,i-1+2-shift)=1;
+        end
+        if any(msg(i,:)==i-2)&&(tm(i-2+2-shift,i-2+2-shift)==0)&&(tm(i-2+2-shift,i-3+2-shift)==0)
+            tm(i+2-shift,i-1+2-shift)=1;
+            tm(i+2-shift,i-2+2-shift)=1;
+        end
+    end
+    if (not(H_KK==0)&&any(msg(i,:)==i-2)&&any(msg(i-1,:)==i)&&(tm(i-2+2-shift,i-3+2-shift)==0)&&(tm(i-2+2-shift,i-2+2-shift)==0)) %If the iteration reaches the last user K, it has to be H_KK=1 to sen W_K from transmitter K
+        tm(i+2-shift,i-1+2-shift)=1;
+        tm(i+2-shift,i-2+2-shift)=1;
+        tm(i-1+2-shift,i+2-shift)=1;
+        tm(i-1+2-shift,i-1+2-shift)=1;
+    end
+    end
+    if not(i==K+shift-1) %If the considered transmitter i is not transmitter K, we don't have to check for H_KK since all other links than H_21 has to exist.
+    if any(msg(i,:)==i-1)&&tm(i-1+2-shift,i-1+2-shift)==0
+        if tm(i-1+2-shift,i-2+2-shift)==0
+            tm(i+2-shift,i-1+2-shift)=1;
+        end
+        if any(msg(i,:)==i-2)&&(tm(i-2+2-shift,i-2+2-shift)==0)&&(tm(i-2+2-shift,i-3+2-shift)==0)
+            tm(i+2-shift,i-1+2-shift)=1;
+            tm(i+2-shift,i-2+2-shift)=1;
+        end
+    end
+    if any(msg(i,:)==i-2)&&any(msg(i-1,:)==i)&&(tm(i-2+2-shift,i-3+2-shift)==0)&&(tm(i-2+2-shift,i-2+2-shift)==0)
+        tm(i+2-shift,i-1+2-shift)=1;
+        tm(i+2-shift,i-2+2-shift)=1;
+        tm(i-1+2-shift,i+2-shift)=1;
+        tm(i-1+2-shift,i-1+2-shift)=1;
+    end
+    end
+    if not(i==K+shift-1)
+    if any(msg(i,:)==i)&&(tm(i-2+2-shift,i-1+2-shift)==0)&&(tm(i+2-shift,i-1+2-shift)==0)
+        if tm(i-1+2-shift,i-1+2-shift)==0
+           tm(i+2-shift,i+2-shift)=1;
+        end
+        if any(msg(i-1,:)==i)
+           tm(i+2-shift,i+2-shift)=1;
+           tm(i-1+2-shift,i+2-shift)=1;
+        end
+    end
+    end
+    if i==K+shift-1
+    if not(H_KK==0)&&any(msg(i,:)==i)&&(tm(i-2+2-shift,i-1+2-shift)==0)&&(tm(i+2-shift,i-1+2-shift)==0)
+        if tm(i-1+2-shift,i-1+2-shift)==0
+           tm(i+2-shift,i+2-shift)=1;
+        end
+        if any(msg(i-1,:)==i)
+           tm(i+2-shift,i+2-shift)=1;
+           tm(i-1+2-shift,i+2-shift)=1;
+        end
+    end
+    end
+end
+end
+
+%% Calculating the DoF from the matrix tm
+transmitted_msg=tm(1,1);
+for i=2:K+1
+    transmitted_msg = transmitted_msg + any(tm(i,i-1:i)==1); %If any message W_i is sent from transmitter "i-1" or "i", the DoF increases by 1
+end
+DoF = transmitted_msg;%*1/(K-1);
+end
