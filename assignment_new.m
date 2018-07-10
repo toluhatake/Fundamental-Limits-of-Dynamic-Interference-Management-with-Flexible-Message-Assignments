@@ -41,6 +41,7 @@ msgshift = zeros(K1,2);% in msgshift we consider transmitter 0.
          msg(i,:)=[i-1,i];
      end
  end
+ if f==0.01
  msg(1,:)=[0,1];
  end
  for s=2:K1+1 %we shift the message assignments by 1 such that transmitter 0 is in the network
